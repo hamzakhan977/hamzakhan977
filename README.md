@@ -2,8 +2,8 @@
 
 
 ## 🔥 Recent Open Source Contributions
-<!--START_CONTRIBS-->
-<!--END_CONTRIBS-->
+<!-- readme: contributors -start -->
+<!-- readme: contributors -end -->
 <!--
 **hamzakhan977/hamzakhan977** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 
