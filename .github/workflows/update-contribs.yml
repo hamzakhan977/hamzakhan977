@@ -1,0 +1,31 @@
+name: Update Open Source PRs
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # runs every day at 6 AM UTC
+  workflow_dispatch:      # allow manual runs
+
+jobs:
+  update-prs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Update merged PRs
+        uses: aquiladev/github-contributions-readme-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          readme-path: ./README.md
+          number: 5
+          include-merges: true
+          filter: PR
+          section-name: contribs
+
+      - name: Commit & push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          git commit -m "chore: update open source PRs" || echo "No changes to commit"
+          git push
