@@ -1,28 +1,26 @@
-name: Update Contributors List
+name: Update Open Source PRs
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # every day at 6 AM UTC
-  workflow_dispatch:      # allow manual runs
+    - cron: '0 6 * * *'   # runs every day at 6 AM UTC
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  update-contributors:
+  update-prs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Generate Contributors section
-        uses: akhilmhdh/contributors-readme-action@v2.3.10
-        env:                                 
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update merged PRs
+        uses: aquiladev/github-contributions-readme-action@v2
         with:
-          image_size: 100
-          readme_path: README.md
-          columns_per_row: 6
-          commit_message: "docs: update contributors list"
-
-
+          token: ${{ secrets.GITHUB_TOKEN }}
+          readme-path: ./README.md
+          number: 5
+          include-merges: true
+          filter: PR
+          section-name: contribs
