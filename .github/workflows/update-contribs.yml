@@ -12,7 +12,7 @@ jobs:
   update-prs:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout profile repo
         uses: actions/checkout@v3
 
       - name: Fetch recent merged PRs
@@ -20,8 +20,8 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const { data } = await github.request("GET /search/issues", {
-              q: "is:pr is:merged author:hamzakhan977",
+            const { data } = await github.request("GET /search/pulls", {
+              q: "author:hamzakhan977 is:merged",
               sort: "updated",
               order: "desc",
               per_page: 5
@@ -33,13 +33,13 @@ jobs:
             }
 
             const list = data.items.map(pr => {
-              const repo = pr.repository_url.split("/").slice(-2).join("/");
+              const repo = pr.base.repo.full_name;
               return `- [${pr.title}](${pr.html_url}) in **${repo}**`;
             });
 
             core.setOutput("content", list.join("\n"));
 
-      - name: Update README
+      - name: Update README with merged PRs
         run: |
           CONTENT="${{ steps.fetch_prs.outputs.content }}"
           awk -v content="$CONTENT" '
