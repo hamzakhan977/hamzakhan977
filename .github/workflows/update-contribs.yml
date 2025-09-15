@@ -17,10 +17,12 @@ jobs:
 
       - name: Generate Contributors section
         uses: akhilmhdh/contributors-readme-action@v2.3.10
+        env:                                 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}   # ✅ Add this line
           image_size: 100
           readme_path: README.md
           columns_per_row: 6
           commit_message: "docs: update contributors list"
+
 
