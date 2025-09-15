@@ -20,34 +20,54 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
+            // Fetch latest 5 merged PRs authored by you
             const { data } = await github.rest.search.issuesAndPullRequests({
               q: "author:hamzakhan977 type:pr is:merged",
               sort: "updated",
               order: "desc",
               per_page: 5
             });
-      
+
             if (!data.items || data.items.length === 0) {
               core.setOutput("content", "No recent contributions found.");
               return;
             }
-      
+
+            // Format each PR: "- [Title](URL) in **owner/repo**"
             const list = data.items.map(pr => {
               const repo = pr.repository_url.replace("https://api.github.com/repos/", "");
               return `- [${pr.title}](${pr.html_url}) in **${repo}**`;
             });
-      
-            core.setOutput("content", list.join("\n"))
+
+            core.setOutput("content", list.join("\n"));
 
       - name: Update README with merged PRs
         run: |
           CONTENT="${{ steps.fetch_prs.outputs.content }}"
-          awk -v content="$CONTENT" '
-            /<!-- external-prs:start -->/ {print; print content; found=1; next}
-            /<!-- external-prs:end -->/ {found=0}
-            !found
-          ' README.md > README.tmp
-          mv README.tmp README.md
+          START="<!-- external-prs:start -->"
+          END="<!-- external-prs:end -->"
+
+          TMP=$(mktemp)
+
+          inside=0
+          while IFS= read -r line; do
+            if [[ "$line" == "$START" ]]; then
+              echo "$line" >> "$TMP"
+              echo "$CONTENT" >> "$TMP"
+              inside=1
+              continue
+            fi
+
+            if [[ "$line" == "$END" ]]; then
+              inside=0
+            fi
+
+            if [[ $inside -eq 0 ]]; then
+              echo "$line" >> "$TMP"
+            fi
+          done < README.md
+
+          mv "$TMP" README.md
 
       - name: Commit & push changes
         run: |
