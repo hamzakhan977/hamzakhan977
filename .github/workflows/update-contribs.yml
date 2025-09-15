@@ -1,9 +1,9 @@
-name: Update External PRs and README
+name: Update External PRs
 
 on:
   schedule:
-    - cron: '0 6 * * *'
-  workflow_dispatch:
+    - cron: '0 6 * * *'   # every day at 6 AM UTC
+  workflow_dispatch:       # allow manual trigger
 
 permissions:
   contents: write
@@ -22,30 +22,31 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const username = 'hamzakhan977';
-            const { data: prs } = await github.rest.search.issuesAndPullRequests({
+            const { data } = await github.rest.search.issuesAndPullRequests({
               q: `is:pr is:merged author:${username}`,
               sort: 'updated',
               order: 'desc',
               per_page: 5
             });
-            const list = prs.map(pr => {
+
+            const list = data.items.map(pr => {
               const title = pr.title;
               const url = pr.html_url;
               const repoName = pr.repository_url.replace('https://api.github.com/repos/', '');
               const mergedAt = pr.closed_at ? pr.closed_at.split('T')[0] : '';
               return `- [${title}](${url}) — ${repoName} — ${mergedAt}`;
             }).join('\n');
-            return list;
+
+            core.setOutput("result", list);
 
       - name: Update README with merged PRs
         run: |
-          # placeholder tags in your README
           start="<!-- external-prs:start -->"
           end="<!-- external-prs:end -->"
 
-          prs_md=$(echo "${{ steps.get_prs.outputs.result }}" | sed 's/"/\\"/g')
-          # use sed or a tool to replace between tags
-          awk -v p="${prs_md}" -v st="$start" -v ed="$end" '
+          prs_md="${{ steps.get_prs.outputs.result }}"
+
+          awk -v p="$prs_md" -v st="$start" -v ed="$end" '
             BEGIN {inside=0}
             {
               if ($0 ~ st) { print; print p; inside=1; next }
