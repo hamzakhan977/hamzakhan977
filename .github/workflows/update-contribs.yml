@@ -67,7 +67,6 @@ jobs:
           mv "$TMP" README.md
 
 
-
       - name: Commit & push changes
         run: |
           git config user.name 'github-actions[bot]'
