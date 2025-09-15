@@ -2,8 +2,8 @@ name: Update External PRs
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # every day at 6 AM UTC
-  workflow_dispatch:       # allow manual trigger
+    - cron: '0 6 * * *' # every day at 6 AM UTC
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,53 +12,46 @@ jobs:
   update-prs:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout profile repo
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Fetch merged PRs
-        id: get_prs
+      - name: Fetch recent merged PRs
+        id: fetch_prs
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const username = 'hamzakhan977';
-            const { data } = await github.rest.search.issuesAndPullRequests({
-              q: `is:pr is:merged author:${username}`,
-              sort: 'updated',
-              order: 'desc',
+            const { data } = await github.request("GET /search/issues", {
+              q: "is:pr is:merged author:hamzakhan977",
+              sort: "updated",
+              order: "desc",
               per_page: 5
             });
 
-            const list = data.items.map(pr => {
-              const title = pr.title;
-              const url = pr.html_url;
-              const repoName = pr.repository_url.replace('https://api.github.com/repos/', '');
-              const mergedAt = pr.closed_at ? pr.closed_at.split('T')[0] : '';
-              return `- [${title}](${url}) — ${repoName} — ${mergedAt}`;
-            }).join('\n');
-
-            core.setOutput("result", list);
-
-      - name: Update README with merged PRs
-        run: |
-          start="<!-- external-prs:start -->"
-          end="<!-- external-prs:end -->"
-
-          prs_md="${{ steps.get_prs.outputs.result }}"
-
-          awk -v p="$prs_md" -v st="$start" -v ed="$end" '
-            BEGIN {inside=0}
-            {
-              if ($0 ~ st) { print; print p; inside=1; next }
-              if ($0 ~ ed) { inside=0 }
-              if (!inside) print
+            if (!data.items || data.items.length === 0) {
+              core.setOutput("content", "No recent contributions found.");
+              return;
             }
+
+            const list = data.items.map(pr => {
+              const repo = pr.repository_url.split("/").slice(-2).join("/");
+              return `- [${pr.title}](${pr.html_url}) in **${repo}**`;
+            });
+
+            core.setOutput("content", list.join("\n"));
+
+      - name: Update README
+        run: |
+          CONTENT="${{ steps.fetch_prs.outputs.content }}"
+          awk -v content="$CONTENT" '
+            /<!-- external-prs:start -->/ {print; print content; found=1; next}
+            /<!-- external-prs:end -->/ {found=0}
+            !found
           ' README.md > README.tmp
           mv README.tmp README.md
 
-      - name: Commit & push
+      - name: Commit & push changes
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add README.md
-          git diff --quiet && echo "No changes to commit" || git commit -m "chore: update external PRs" && git push
+          git diff --quiet && echo "No changes to commit" || git commit -m "docs: update recent PRs" && git push
