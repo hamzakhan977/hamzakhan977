@@ -46,28 +46,25 @@ jobs:
           CONTENT="${{ steps.fetch_prs.outputs.content }}"
           START="<!-- external-prs:start -->"
           END="<!-- external-prs:end -->"
-
+      
           TMP=$(mktemp)
-
           inside=0
-          while IFS= read -r line; do
+          while IFS= read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == "$START" ]]; then
               echo "$line" >> "$TMP"
               echo "$CONTENT" >> "$TMP"
               inside=1
               continue
             fi
-
             if [[ "$line" == "$END" ]]; then
               inside=0
             fi
-
             if [[ $inside -eq 0 ]]; then
               echo "$line" >> "$TMP"
             fi
           done < README.md
-
           mv "$TMP" README.md
+
 
       - name: Commit & push changes
         run: |
