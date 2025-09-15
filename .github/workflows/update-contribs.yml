@@ -1,8 +1,8 @@
-name: Update Open Source PRs
+name: Update External PRs and README
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # every day at 6 AM UTC
+    - cron: '0 6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -12,15 +12,52 @@ jobs:
   update-prs:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout profile repo
         uses: actions/checkout@v3
 
-      - name: Update merged PRs
-        uses: satyawikananda/github-contributions-readme-action@v2.3.4
+      - name: Fetch merged PRs
+        id: get_prs
+        uses: actions/github-script@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          readme-path: ./README.md
-          number: 5
-          include-merges: true
-          filter: PR
-          section-name: contribs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const username = 'hamzakhan977';
+            const { data: prs } = await github.rest.search.issuesAndPullRequests({
+              q: `is:pr is:merged author:${username}`,
+              sort: 'updated',
+              order: 'desc',
+              per_page: 5
+            });
+            const list = prs.map(pr => {
+              const title = pr.title;
+              const url = pr.html_url;
+              const repoName = pr.repository_url.replace('https://api.github.com/repos/', '');
+              const mergedAt = pr.closed_at ? pr.closed_at.split('T')[0] : '';
+              return `- [${title}](${url}) — ${repoName} — ${mergedAt}`;
+            }).join('\n');
+            return list;
+
+      - name: Update README with merged PRs
+        run: |
+          # placeholder tags in your README
+          start="<!-- external-prs:start -->"
+          end="<!-- external-prs:end -->"
+
+          prs_md=$(echo "${{ steps.get_prs.outputs.result }}" | sed 's/"/\\"/g')
+          # use sed or a tool to replace between tags
+          awk -v p="${prs_md}" -v st="$start" -v ed="$end" '
+            BEGIN {inside=0}
+            {
+              if ($0 ~ st) { print; print p; inside=1; next }
+              if ($0 ~ ed) { inside=0 }
+              if (!inside) print
+            }
+          ' README.md > README.tmp
+          mv README.tmp README.md
+
+      - name: Commit & push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          git diff --quiet && echo "No changes to commit" || git commit -m "chore: update external PRs" && git push
